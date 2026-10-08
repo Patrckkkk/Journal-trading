@@ -138,7 +138,8 @@ function JournalWorkspace({ user, onSignOut }: { user: User; onSignOut: () => vo
         if (!active) return
         setRemoteTrades(loaded)
 
-        const dismissed = window.localStorage.getItem(samplesFlag(user.id)) === "1"
+        const dismissed =
+          window.localStorage.getItem(samplesFlag(user.id)) === "1" || user.user_metadata?.sin_ejemplos === true
         setSamples(loaded.length === 0 && !dismissed ? createSampleTrades() : [])
 
         try {
@@ -244,6 +245,7 @@ function JournalWorkspace({ user, onSignOut }: { user: User; onSignOut: () => vo
     try {
       if (trade.isSample) {
         setSamples((current) => current.filter((item) => item.id !== trade.id))
+        if (samples.length <= 1) rememberSamplesDismissed()
       } else {
         setIsWorking(true)
         await deleteTradeRemote(trade)
@@ -259,11 +261,17 @@ function JournalWorkspace({ user, onSignOut }: { user: User; onSignOut: () => vo
     }
   }
 
+  function rememberSamplesDismissed() {
+    window.localStorage.setItem(samplesFlag(user.id), "1")
+    // También se guarda en la cuenta, para que no vuelvan en otro navegador o dispositivo.
+    void getSupabase().auth.updateUser({ data: { sin_ejemplos: true } })
+  }
+
   function clearSamples() {
     if (!samples.length) return
     const count = samples.length
     setSamples([])
-    window.localStorage.setItem(samplesFlag(user.id), "1")
+    rememberSamplesDismissed()
     notify(count === 1 ? "Se quitó el trade de ejemplo." : `Se quitaron ${count} trades de ejemplo.`)
   }
 
